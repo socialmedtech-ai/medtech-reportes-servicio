@@ -86,7 +86,57 @@ botonGuardar.addEventListener('click',async()=>{
   if(error){console.error(error);mostrarMensaje('No fue posible guardar la firma. Intente nuevamente.','error');botonGuardar.disabled=false;botonLimpiar.disabled=false;return}
   mostrarMensaje('Firma registrada exitosamente. Puede cerrar esta ventana.','ok');
 });
-if(!solicitudId){botonGuardar.disabled=true;mostrarMensaje('No se encontró una solicitud de firma válida.','error')}
+async function validarSolicitud(){
+  if(!solicitudId){
+    botonGuardar.disabled=true;
+    botonLimpiar.disabled=true;
+    mostrarMensaje('No se encontró una solicitud de firma válida.','error');
+    return false;
+  }
+  const {data,error}=await supabase.rpc('obtener_solicitud_firma',{p_solicitud_id:solicitudId});
+  if(error){
+    console.error(error);
+    botonGuardar.disabled=true;
+    botonLimpiar.disabled=true;
+    mostrarMensaje('No fue posible validar esta solicitud de firma.','error');
+    return false;
+  }
+  const solicitud=Array.isArray(data)?data[0]:data;
+  if(!solicitud){
+    botonGuardar.disabled=true;
+    botonLimpiar.disabled=true;
+    mostrarMensaje('Esta solicitud de firma no existe.','error');
+    return false;
+  }
+  if(solicitud.estado==='firmado'){
+    botonGuardar.disabled=true;
+    botonLimpiar.disabled=true;
+    mostrarMensaje('Esta solicitud ya fue firmada anteriormente.','info');
+    return false;
+  }
+  if(solicitud.estado==='vencida'){
+    botonGuardar.disabled=true;
+    botonLimpiar.disabled=true;
+    mostrarMensaje('Esta solicitud de firma ha vencido. Solicite al representante MEDTECH generar una nueva.','error');
+    return false;
+  }
+  if(solicitud.estado==='cancelada'){
+    botonGuardar.disabled=true;
+    botonLimpiar.disabled=true;
+    mostrarMensaje('Esta solicitud de firma ya no está disponible. Solicite al representante MEDTECH generar una nueva.','error');
+    return false;
+  }
+  if(solicitud.estado!=='pendiente'){
+    botonGuardar.disabled=true;
+    botonLimpiar.disabled=true;
+    mostrarMensaje('Esta solicitud de firma no está disponible.','error');
+    return false;
+  }
+  mensaje.className='';
+  mensaje.textContent='';
+  return true;
+}
+validarSolicitud();
 </script>
 </body>
 </html>
