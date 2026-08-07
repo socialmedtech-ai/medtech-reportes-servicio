@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Firma de reporte - MEDTECH COLOMBIA</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fa;
+      color: #1e2938;
+    }
+
+    .contenedor {
+      max-width: 650px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .tarjeta {
+      background: white;
+      border: 1px solid #d7dfeb;
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(32,59,107,.10);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      color: #203b6b;
+      font-size: 23px;
+      text-align: center;
+    }
+
+    .subtitulo {
+      text-align: center;
+      color: #687487;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .firma-area {
+      border: 2px solid #203b6b;
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 300px;
+      touch-action: none;
+    }
+
+    .linea {
+      border-top: 1px solid #888;
+      margin: -35px 25px 0;
+      position: relative;
+      pointer-events: none;
+    }
+
+    .indicacion {
+      text-align: center;
+      color: #687487;
+      font-size: 12px;
+      margin-top: 42px;
+    }
+
+    .acciones {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #limpiar {
+      background: #e9eef6;
+      color: #203b6b;
+    }
+
+    #guardar {
+      background: #203b6b;
+      color: white;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    #mensaje {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 9px;
+      text-align: center;
+      font-size: 14px;
+      display: none;
+    }
+
+    .ok {
+      display: block !important;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .error {
+      display: block !important;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .info {
+      display: block !important;
+      background: #eaf0f8;
+      color: #203b6b;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="contenedor">
+    <div class="tarjeta">
+
+      <h1>Firma del cliente</h1>
+
+      <div class="subtitulo">
+        MEDTECH COLOMBIA<br>
+        Firma asociada al reporte de servicio
+      </div>
+
+      <div class="firma-area">
+        <canvas id="firma"></canvas>
+        <div class="linea"></div>
+        <div class="indicacion">Firme dentro del recuadro utilizando el dedo</div>
+      </div>
+
+      <div class="acciones">
+        <button id="limpiar">Limpiar</button>
+        <button id="guardar">Guardar firma</button>
+      </div>
+
+      <div id="mensaje"></div>
+
+    </div>
+  </div>
+
+<script type="module">
+
+import { createClient } from
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL =
+'https://ghhqmhftwmqvwznqkiwa.supabase.co';
+
+const SUPABASE_KEY =
+'sb_publishable_TkSZ-G8rqZKLfrNVtz8wTA_rdGmg06M';
+
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+const parametros = new URLSearchParams(window.location.search);
+
+const solicitudId = parametros.get('solicitud');
+
+const canvas = document.getElementById('firma');
+const ctx = canvas.getContext('2d');
+
+const botonLimpiar = document.getElementById('limpiar');
+const botonGuardar = document.getElementById('guardar');
+const mensaje = document.getElementById('mensaje');
+
+let dibujando = false;
+let tieneFirma = false;
+
+function mostrarMensaje(texto, tipo) {
+  mensaje.className = tipo;
+  mensaje.textContent = texto;
+}
+
+function ajustarCanvas() {
+
+  const rect = canvas.getBoundingClientRect();
+  const escala = window.devicePixelRatio || 1;
+
+  canvas.width = rect.width * escala;
+  canvas.height = rect.height * escala;
+
+  ctx.setTransform(escala, 0, 0, escala, 0, 0);
+
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#111';
+}
+
+ajustarCanvas();
+
+function posicion(evento) {
+
+  const rect = canvas.getBoundingClientRect();
+
+  return {
+    x: evento.clientX - rect.left,
+    y: evento.clientY - rect.top
+  };
+}
+
+canvas.addEventListener('pointerdown', evento => {
+
+  dibujando = true;
+  tieneFirma = true;
+
+  canvas.setPointerCapture(evento.pointerId);
+
+  const p = posicion(evento);
+
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+});
+
+canvas.addEventListener('pointermove', evento => {
+
+  if (!dibujando) return;
+
+  const p = posicion(evento);
+
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+});
+
+canvas.addEventListener('pointerup', () => {
+  dibujando = false;
+});
+
+canvas.addEventListener('pointercancel', () => {
+  dibujando = false;
+});
+
+botonLimpiar.addEventListener('click', () => {
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  tieneFirma = false;
+
+  mensaje.className = '';
+  mensaje.textContent = '';
+});
+
+botonGuardar.addEventListener('click', async () => {
+
+  if (!solicitudId) {
+
+    mostrarMensaje(
+      'Esta solicitud de firma no es válida.',
+      'error'
+    );
+
+    return;
+  }
+
+  if (!tieneFirma) {
+
+    mostrarMensaje(
+      'Primero debe realizar la firma.',
+      'error'
+    );
+
+    return;
+  }
+
+  botonGuardar.disabled = true;
+  botonLimpiar.disabled = true;
+
+  mostrarMensaje(
+    'Guardando firma...',
+    'info'
+  );
+
+  const firmaImagen =
+    canvas.toDataURL('image/png');
+
+  const { error } =
+    await supabase.rpc(
+      'guardar_firma_cliente',
+      {
+        p_solicitud_id: solicitudId,
+        p_firma: firmaImagen
+      }
+    );
+
+  if (error) {
+
+    console.error(error);
+
+    mostrarMensaje(
+      'No fue posible guardar la firma. Intente nuevamente.',
+      'error'
+    );
+
+    botonGuardar.disabled = false;
+    botonLimpiar.disabled = false;
+
+    return;
+  }
+
+  mostrarMensaje(
+    'Firma registrada exitosamente. Puede cerrar esta ventana.',
+    'ok'
+  );
+
+});
+
+if (!solicitudId) {
+
+  botonGuardar.disabled = true;
+
+  mostrarMensaje(
+    'No se encontró una solicitud de firma válida.',
+    'error'
+  );
+}
+
+</script>
+
+</body>
+</html>
